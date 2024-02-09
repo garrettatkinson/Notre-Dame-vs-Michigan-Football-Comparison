@@ -1,0 +1,875 @@
+---
+title: "Notre Dame Football"
+author: "Mendoza College of Business"
+date: '2023-01-11'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Set Up
+
+Let's get ourselves set up for the analysis, the first thing we need to do is load in the packages we will be using for this analysis:
+
+If you need to install any packages, the lines below can be un-commented to install the package. 
+
+```{r}
+# Install Packages
+# install.packages("ggplot2") # Install ggplot2
+# install.packages("ggdark") # Install ggdark
+# install.packages("ggimage") # Install ggimage
+# install.packages("reshape") # Install reshape
+# install.packages("ggridges") # Install ggridges
+# install.packages("ggrepel") # Install ggrepel
+```
+
+
+
+```{r}
+# Load Packages:
+library(ggplot2) # Load ggplot2
+library(ggdark) # Load ggdark
+library(ggimage) # Load ggimage
+library(reshape) # Load reshape
+library(ggridges) # Load ggridges
+library(ggrepel) # Load ggrepel
+```
+
+We will also be taking advantage of some pre-built functions, contained in the file "sports_analytics_functions.r", if you download this file to the same location as the .rmd file they can be read in with the below command:
+
+
+```{r}
+# Load Functions:
+source("sports_analytics_functions.r")
+```
+
+
+```{r}
+load("team_logos.rda")
+```
+
+
+
+We will be looking at Notre Dame's most recent season so let us load in all of the data from the 2023 college football season:
+
+```{r}
+library(cfbfastR)
+```
+
+```{r}
+# Load data
+cfb_2023 <- load_cfb_pbp(seasons = 2023)
+# Convert to data frame
+cfb_2023 <- as.data.frame(cfb_2023)
+```
+
+
+# College Footbal Analysis 
+
+Prior to beginning any analysis we want to examine the dataset we are using. The first thing we can do is view the first few rows using the `head()` command:
+
+```{r}
+# View first few rows of data
+head(cfb_2023) 
+```
+
+We can also check out the last few rows of the data with the `tail()` command:
+
+```{r}
+# View last few rows of data
+tail(cfb_2023)
+```
+
+To check the overall dimensions of our dataset we can use the `dim()` command:
+
+```{r}
+# View dimensions of data
+dim(cfb_2023)
+```
+
+As we can see we have 245757 rows and 330 columns in the dataset. Here each individual row corresponds to a single play in the 2023 college football season.
+
+
+To view a summary of all the columns in our dataset we can use the `summary()` command (we will just look at the first 50 as we have quite a few):
+```{r}
+# View summary of the dataset
+summary(cfb_2023[,1:50])
+```
+
+
+# Notre Dame Football - Strengths and Weaknesses
+
+We now want to ask the question, what are the strengths and weaknesses of the Notre Dame football team. To this there are a couple of things to consider.
+
+Firstly what is a strength and weakness in college football?
+
+If we think about what effects the outcome of a game the first thing we could look at would be the success of the offense and defense at passing and running the ball. 
+
+A first pass at this would be yards per play for offensive and defensive plays.
+
+Let's first extract the play type of each play:
+
+```{r}
+# Create summarized play type
+s_play_type <- create_simplex_play_type(cfb_2023)
+# Add summarized play type back to dataset
+cfb_2023$playtype <- s_play_type
+```
+
+
+
+let's calculate some summary stats using the loaded function `create_team_summary()`:
+
+```{r}
+# Create team level summary
+team_summary <- create_team_summary(pbp = cfb_2023, # Set dataset
+                                team_logos = team_logos) # Set logos to 
+```
+
+Now let's view the first few rows of the summary statistics:
+
+```{r}
+# View first rows of summary statistics
+head(team_summary)
+```
+
+The first few columns relate to team level information
+
+
+* team_id - The ID code for each team
+* school - The school name
+* color - The school primary color
+* alt_color - The school alternative color
+* logos - Link to the school logo image
+* games - The number of games played so far
+
+The next few columns relate to the offensive performance of the school:
+
+* pass_n - Number of passes thrown
+* pass_yards - Total pass yards 
+* pass_epa - Total pass EPA (Expected points added)
+* pass_wpa - Total pass WPA (Win probability added)
+
+* rush_n - Number of rushes
+* rush_yards - Total rush yards
+* rush_epa - Total rush EPA (Expected points added)
+* rush_wpa - Total Rush WPA (Win probability added)
+
+We then have the offensive statistics at a per play level:
+
+* pass_yards_per_play - Pass yards per play    
+* pass_epa_per_play - Pass EPA (Expected points added) per play
+* pass_wpa_per_play - Pass WPA (Win probability added) per play
+
+* rush_yards_per_play - Rush yards_per_play
+* rush_epa_per_play - Rush EPA (Expected points added) per play
+* rush_wpa_per_play - Rush WPA (Win probability added) per play     
+
+The next set of columns relate to the defensive performance of the school:
+
+* pass_n_def - Number of passes defended
+* pass_yards_def - Total pass yards against
+* pass_epa_def - Total pass EPA against (Expected points added)
+* pass_wpa_def - Total pass WPA against (Win probability added)
+
+* rush_n_def - Number of rushes defended
+* rush_yards_def - Total rush yards against
+* rush_epa_def - Total rush EPA against (Expected points added)
+* rush_wpa_def - Total rush WPA against (Win probability added)
+ 
+Finally we have the defensive statistics at a per play level:
+
+* pass_yards_per_play_def - Pass yards against per play
+* pass_epa_per_play_def - Pass EPA against (Expected points added) per play
+* pass_wpa_per_play_def - Pass WPA against (Win probability added) per play
+
+* rush_yards_per_play_def - Rush yards against per play
+* rush_epa_per_play_def - Rush EPA against (Expected points added) per play
+* rush_wpa_per_play_def - Rush WPA against (Win probability added) per play
+
+## Analysing Performance
+
+# Visualising Data
+
+Now that we have calculated summary statistics for each of the teams we next want to visualize these statistics. To this we will use `ggplot`. 
+
+When we create a visualization with ggplot we need to set a couple of things:
+
+* `data` - The dataset we are using for the visualization
+* `aes` - This is what we are mapping the data to (think aesthetics) and include the x and y-axis, color and shape. These are set inside the `aes()` part of the code. 
+* `geom` - The is controls the type of plot we are going to create and are set outside of the initial call.
+
+We can also set theme objects to control the appearance of the plot.
+
+Different parts of the plot are added together using a `+` symbol
+
+Let's first create a scatter plot of the pass and rush yards per play for the offenses. For this we will set the x-axis as the rushing yards per play and the y-axis as passing yards per play. To generate a scatter plot we will use `geom_point`. We will also use `theme_minimal()` to control the plots appearance:
+
+```{r}
+# Create plot
+ggplot(data = team_summary, # Set dataset
+                 aes(x = rush_yards_per_play, # Set x-axis variable
+                     y = pass_yards_per_play)) + # Set y-axis variable
+  geom_point() + # Set geom point to create scatter plot
+  theme_minimal() + # Set theme minimal 
+  labs(x = "Rush Yards Per Play", # Add labels
+       y = "Pass Yards Per Play",
+       title = "Rush v Pass Yards Per Play",
+       subtitle = "CFB 2023")
+```
+
+The first issue with this graph is that we cannot see which team each point relates to, one option here is to add labels to each of the points which can be done using 'geom_text_repel';
+
+```{r}
+# Create plot
+ggplot(data = team_summary, # Set dataset
+                 aes(x = rush_yards_per_play, # Set x-axis variable
+                     y = pass_yards_per_play)) + # Set y-axis variable
+  geom_point() + # Set geom point to create scatter plot
+  geom_text_repel(aes(label = school)) + # Label points
+  theme_minimal() + # Set theme minimal 
+  labs(x = "Rush Yards Per Play", # Add labels
+       y = "Pass Yards Per Play",
+       title = "Rush v Pass Yards Per Play",
+       subtitle = "CFB 2023") 
+```
+
+This works and shows us the teams on the graph but is very crowded. For college football data we have team logos available so we can use these on the graph instead using `geom_image`. We can also switch to a dark theme. (This may take a minute to run)
+
+```{r}
+# Create plot
+ggplot(data = team_summary, # Set dataset
+                 aes(x = rush_yards_per_play, # Set x-axis variable
+                     y = pass_yards_per_play)) + # Set y-axis variable
+  geom_point() + # Set geom point to create scatter plot
+  geom_image(image = team_summary$logos, asp = 16/9) + # Add logos
+  dark_theme_bw() + # Set dark theme
+   labs(x = "Rush Yards Per Play", # Add labels
+       y = "Pass Yards Per Play",
+       title = "Rush v Pass Yards Per Play",
+       subtitle = "CFB 2023") 
+
+# Turn off dark mode
+invert_geom_defaults()
+```
+
+Here, we see Notre Dame averaged slightly under 8 yards per play when passing and slightly under 5 yards per play when running the ball. Let's add some lines to the graph indicating the average pass and rush yards per play for all of the teams.
+
+```{r}
+# Create plot
+ggplot(data = team_summary, # Set dataset
+                 aes(x = rush_yards_per_play, # Set x-axis variable
+                     y = pass_yards_per_play)) + # Set y-axis variable
+  geom_point() + # Set geom point to create scatter plot
+  geom_image(image = team_summary$logos, asp = 16/9) + # Add logos
+  dark_theme_bw() + # Set dark theme
+  geom_hline(yintercept = mean(team_summary$pass_yards_per_play)) + # Add line for average pass yards
+  geom_vline(xintercept = mean(team_summary$rush_yards_per_play)) + # Add line for average rush yards
+   labs(x = "Rush Yards Per Play", # Add labels
+       y = "Pass Yards Per Play",
+       title = "Rush v Pass Yards Per Play",
+       subtitle = "CFB 2023") 
+
+# Turn off dark mode
+invert_geom_defaults()
+```
+
+Here we see that when considering yards, Notre Dame was above average for both passing and rushing the ball. 
+
+Let's next look at the Notre Dame defense, here smaller values indicate a better performance
+
+```{r}
+# Create plot
+ggplot(data = team_summary, # Set dataset
+                 aes(x = rush_yards_per_play_def, # Set x-axis variable
+                     y = pass_yards_per_play_def)) + # Set y-axis variable
+  geom_point() + # Set geom point to create scatter plot
+  geom_image(image = team_summary$logos, asp = 16/9) + # Add logos
+  dark_theme_bw() + # Set dark theme
+  geom_hline(yintercept = mean(team_summary$pass_yards_per_play_def)) + # Add line for average pass yards
+  geom_vline(xintercept = mean(team_summary$rush_yards_per_play_def)) + # Add line for average rush yards
+   labs(x = "Rush Yards Per Play", # Add labels
+       y = "Pass Yards Per Play",
+       title = "Rush v Pass Yards Per Play - Defense",
+       subtitle = "CFB 2023") 
+
+# Turn off dark mode
+invert_geom_defaults()
+```
+
+Here we see Notre Dame's pass defense and rush defense was better than average.
+
+
+# Choosing the Right Metric
+
+While we have seen from our initial results that Notre Dame appears to perform better in the pass game for both offense and defense we need to ask are we using the right metric for this question. 
+
+Given the nature of football and how some yards are more valuable than others, it would be worth while to look at this for other metrics instead of yards gained, for this we could instead use either expected points added or win probability added.
+
+Let's first look at expected points added:
+
+```{r}
+# Create plot
+ggplot(data = team_summary, # Set dataset
+                 aes(x = rush_epa_per_play, # Set x-axis variable
+                     y = pass_epa_per_play)) + # Set y-axis variable
+  geom_point() + # Set geom point to create scatter plot
+  geom_image(image = team_summary$logos, asp = 16/9) + # Add logos
+  dark_theme_bw() + # Set dark theme
+  geom_hline(yintercept = mean(team_summary$pass_epa_per_play)) + # Add line for average pass epa
+  geom_vline(xintercept = mean(team_summary$rush_epa_per_play)) + # Add line for average rush epa
+   labs(x = "Rush EPA Per Play", # Add labels
+       y = "Pass EPA Per Play",
+       title = "Rush v Pass EPA Per Play",
+       subtitle = "CFB 2023") 
+
+# Turn off dark mode
+invert_geom_defaults()
+```
+
+Here, we see similar results in that Notre Dame is above average at passing the ball, while slightly below average at running the ball. 
+
+Let's also look at this metric for defense:
+
+
+```{r}
+# Create plot
+ggplot(data = team_summary, # Set dataset
+                 aes(x = rush_epa_per_play_def, # Set x-axis variable
+                     y = pass_epa_per_play_def)) + # Set y-axis variable
+  geom_point() + # Set geom point to create scatter plot
+  geom_image(image = team_summary$logos, asp = 16/9) + # Add logos
+  dark_theme_bw() + # Set dark theme
+  geom_hline(yintercept = mean(team_summary$pass_epa_per_play_def)) + # Add line for average pass epa
+  geom_vline(xintercept = mean(team_summary$rush_epa_per_play_def)) + # Add line for average rush epa
+   labs(x = "Rush EPA Per Play", # Add labels
+       y = "Pass EPA Per Play",
+       title = "Rush v Pass EPA Per Play - Defense",
+       subtitle = "CFB 2023") 
+
+# Turn off dark mode
+invert_geom_defaults()
+```
+
+Here we again see Notre Dame being above average on both pass defense and rush defense. 
+
+Now we can also see if the WPA metric agrees with these findings, try it out yourself below:
+
+
+# Try it yourself
+
+1. Visualize the WPA per play for run and pass for offense:
+```{r}
+
+```
+
+2. Visualize the WPA per play for run and pass defense:
+```{r}
+
+```
+
+
+3. Do the results from the graphs change anything about our interpretation here?
+
+
+Note: To save a plot to the computer, you first want to assign it to a variable:
+
+```{r}
+# Create plot
+plot_1 <- ggplot(data = team_summary, # Set dataset
+                 aes(x = pass_epa_per_play_def, # Set x-axis variable
+                     y = rush_epa_per_play_def)) + # Set y-axis variable
+  geom_point() + # Set geom point to create scatter plot
+  geom_image(image = team_summary$logos, asp = 16/9) + # Add logos
+  dark_theme_bw() + # Set dark theme
+  labs(x = "Rush EPA Per Play",
+       y = "Pass EPA Per Play",
+       title = "Pass EPA v Rush EPA Per Play - Defense",
+       subtitle = "NCAA College Football 2023")
+# Turn off ggdark
+invert_geom_defaults()
+```
+
+and then run `ggsave()`:
+
+```{r}
+# Save plot
+ggsave(plot_1, # Plot to save
+       file = "epa_per_play_def_2023.jpeg", # File name to save as
+       dpi = 600) # Resolution
+```
+
+The plot can be viewed by running:
+
+```{r}
+# View plot
+plot_1
+```
+
+
+# Risk v Reward
+
+So far we have only been looking at the average success rate on given plays, however, in football the risk vs reward of a play call must be considered. While it would seem optimal to focus on the play type where the most success is found there could be a considerable risk of a negative play that needs to be contrasted with the probability of a highly successful play. 
+
+To analyse this we will look at the distribution of play outcomes for the different play types on each down for Notre Dame. 
+
+For this we will extract all of the Notre Dame pass and run plays from the original play by play data and then view their distribution by down:
+
+
+```{r}
+# Select just Notre Dame Offensive Plays - rushes and passes
+nd_off <- cfb_2023[which(cfb_2023$pos_team == "Notre Dame" &
+                     cfb_2023$playtype %in% c("Rush", "Pass")),
+                       c("down", "playtype", "wpa", "EPA")]
+```
+
+We are again going to melt the data to long form to get it in a more useful format for plotting. We will first just look at EPA and leave WPA until later:
+ 
+```{r}
+# Convert data to long form and leave out WPA for now
+nd_off_m <- melt(nd_off[,c("down", "playtype", "EPA")], id.vars = c("down", "playtype"))
+```
+
+The melted data looks like this:
+
+```{r}
+head(nd_off_m)
+```
+
+
+
+Now we are ready to plot the data out:
+
+```{r}
+# Create plot
+ggplot(nd_off_m, # Set dataset
+       aes(x = value, y = factor(down), fill = factor(playtype)))+ # Set aesthetics
+  geom_density_ridges(alpha = 0.5) + # Set geom density ridges
+  theme_minimal() + # Set theme as minimal
+  labs(x = "EPA", title = "EPA by Play Type and Down", # Set labels for plot
+       subtitle = "Notre Dame Offense",
+       fill = "Play Type", y = "Down") +
+  scale_fill_manual(values = c("Pass" = "red", "Rush" = "Blue")) + # Set colors manually
+  dark_theme_bw()+ # Convert to dark theme
+  geom_vline(xintercept = 0, linetype = 2, color = "white") # Add vertical line at 0
+
+# Turn off dark mode
+invert_geom_defaults()
+```
+
+Here we see that while the distribution for passes has the largest tail on the right hand side of the distribution indicating more highly successful plays, it does have a second peak on the left hand side of the distribution indicating the potential for very negative plays. 
+
+This is particularly apparent on third down where the is potential for the play to result in a significantly negative result. This highlights the need for Notre Dame's offense to control the chains and ensure they do not end up in 3rd and long situations where they are forced to pass the ball. 
+
+Let's look at this distribution for defense:
+
+```{r}
+# Select just Notre Dame Defensive Plays - rushes and passes
+nd_def <- cfb_2023[cfb_2023$def_pos_team == "Notre Dame" &
+                     cfb_2023$playtype %in% c("Rush", "Pass"),
+                       c("down", "playtype", "wpa", "EPA")]
+```
+
+We will again just extract EPA and melt the data:
+ 
+```{r}
+# Melt data and select just EPA, leaving out WPA
+nd_def_m <- melt(nd_def[,c("down", "playtype", "EPA")], id.vars = c("down", "playtype"))
+```
+
+Now we can plot this out:
+
+```{r}
+# Create plot
+ggplot(nd_def_m, # Set dataset 
+       aes(x = value, y = factor(down), fill = factor(playtype)))+ # Set aesthetics
+  geom_density_ridges(alpha = 0.5) + # Set density to create distribution
+  theme_minimal() + # Set plot theme
+  labs(x = "EPA", title = "EPA by Play Type and Down", # Set plot labels
+       subtitle = "Notre Dame Defense",
+       fill = "Play Type", y = "Down") +
+  scale_fill_manual(values = c("Pass" = "red", "Rush" = "Blue")) + # Set colors manually
+  dark_theme_bw() + # Set theme
+  geom_vline(xintercept = 0, linetype = 2, color = "white") # Add vertical line at 0
+
+# Turn off dark mode
+invert_geom_defaults()
+```
+
+Here we see a similar result, the Notre Dame pass defense is on average very successful but there have been a couple of successful pass plays, especially on third down where the defense has given up big plays. 
+
+
+# Try it yourself
+
+Visualize what they key downs for Notre Dame's success by looking at `wpa` (Win Probability Added) for different downs and play types: (Hint: Include `wpa` instead of `EPA` inside the melt function):
+
+1. Visualize Notre Dame's offensive performance by down using the wpa metric:
+
+```{r}
+
+```
+
+2. Visualize Notre Dame's defensive performance by down using the wpa metric:
+
+```{r}
+
+```
+
+
+# Analytics over time
+
+Up until now we have been using the whole of Notre Dame's season to analyse their performance, however, this may not give us the optimal data to use for providing recommendations for next year. The team's performance changed quite a bit over the year as Coach Freeman adapated to his new role and the team got used to playing together. Therefore it would be worthwhile for us to analyse how the team's performance changed over the season. 
+
+
+Let's calculate summary statistics for Notre Dame for each of the weeks. We can do this by just running a single week through the `create_team_summary()` function:
+
+```{r}
+# Calculate statistics for week 1
+w1_stats <- create_team_summary(pbp = cfb_2023[cfb_2023$week == 1,], # Select week 1
+                                team_logos = team_logos)
+# Calculate statistics for week 2
+w2_stats <- create_team_summary(pbp =  cfb_2023[cfb_2023$week == 2,], # Select week 2
+                                team_logos = team_logos)
+# Calculate statistics for week 3
+w3_stats <- create_team_summary(pbp =  cfb_2023[cfb_2023$week == 3,], # Select week 3
+                                team_logos = team_logos)
+# Calculate statistics for week 4
+w4_stats <- create_team_summary(pbp =  cfb_2023[cfb_2023$week == 4,], # Select week 4
+                                team_logos = team_logos)
+# Calculate statistics for week 5
+w5_stats <- create_team_summary(pbp =  cfb_2023[cfb_2023$week == 5,], # Select week 5
+                                team_logos = team_logos)
+
+# Calculate statistics for week 6
+w6_stats <- create_team_summary(pbp =  cfb_2023[cfb_2023$week == 6,], # Select week 6
+                                team_logos = team_logos)
+# Calculate statistics for week 7
+w7_stats <- create_team_summary(pbp =  cfb_2023[cfb_2023$week == 7,], # Select week 7
+                                team_logos = team_logos)
+# Calculate statistics for week 8
+w8_stats <- create_team_summary(pbp =  cfb_2023[cfb_2023$week == 8,], # Select week 8
+                                team_logos = team_logos)
+# Calculate statistics for week 9
+w9_stats <- create_team_summary(pbp =  cfb_2023[cfb_2023$week == 9,], # Select week 9
+                                team_logos = team_logos)
+
+
+```
+
+
+Now that we have calculated the statistics, let's extract the Notre Dame statistics, join them together and append a column indicating the week:
+
+```{r}
+# Extract Notre Dame stats
+nd_stats_1 <- w1_stats[w1_stats$school == "Notre Dame",]
+nd_stats_2 <- w2_stats[w2_stats$school == "Notre Dame",]
+nd_stats_3 <- w3_stats[w3_stats$school == "Notre Dame",]
+nd_stats_4 <- w4_stats[w4_stats$school == "Notre Dame",]
+nd_stats_5 <- w5_stats[w5_stats$school == "Notre Dame",]
+nd_stats_6 <- w6_stats[w6_stats$school == "Notre Dame",]
+nd_stats_7 <- w7_stats[w7_stats$school == "Notre Dame",]
+nd_stats_9 <- w9_stats[w9_stats$school == "Notre Dame",]
+
+
+
+
+# Join ND statistics together
+nd_stats <- rbind.data.frame(nd_stats_1, nd_stats_2, nd_stats_3, nd_stats_4,
+                              nd_stats_5,nd_stats_6, nd_stats_7,
+                             nd_stats_9)
+
+# Create week column
+nd_stats$week <- c(c(1:7,9))
+```
+
+
+Let's first look at the changes in total pass offense over the season. 
+
+We are going to first extract the columns which relate to pass performance overall, looking at total values, and then melt them to a format more suitable for plotting:
+
+```{r}
+# Extract and melt per play pass statistics
+pass_stats_per_play <- melt(nd_stats[,c("pass_n", "pass_yards_per_play",
+                                        "pass_epa_per_play", 
+                                        "pass_wpa_per_play", "week")],
+                   id.vars = "week")
+
+# View first rows of melted data
+head(pass_stats_per_play)
+```
+
+Now we can visualize this over time:
+
+```{r, warning = FALSE}
+# Create plot
+ggplot(pass_stats_per_play, # Set dataset
+       aes(x = week, y = value)) + # Set aesthetics
+  geom_point() + # Set geom_point for scatter plot
+  geom_smooth() + # Set geom_smooth for smoothing line
+  facet_wrap(~variable, scales = "free") + # Separate by variable
+  theme_minimal() + # Set theme
+  labs(title = "Notre Dame Passing Offense", # Set plot labels
+       subtitle = "2023 Season")
+```
+
+Here see that Notre Dame's passing success dipped during the middle of the season but has risen in recent weeks. Let's look at the run game:
+
+```{r}
+# Extract and melt per play rushing statistics:
+rush_stats_per_play <- melt(nd_stats[,c("rush_n", "rush_yards_per_play",
+                                        "rush_epa_per_play", 
+                                        "rush_wpa_per_play", "week")],
+                   id.vars = "week")
+```
+
+We can now plot this out:
+```{r, warning = FALSE}
+# Create plot
+ggplot(rush_stats_per_play, # Set dataset
+       aes(x = week, y = value)) + # Set aesthetics
+  geom_point() + # Set geom point for scatter plot
+  geom_smooth() + # Add smoothing line
+  facet_wrap(~variable, scales = "free") + # Separate by variable
+  theme_minimal() + # Set theme as minimal
+  labs(title = "Notre Dame Rushing Offense", # Set labels 
+       subtitle = "2023 Season")
+```
+
+Here we see a slight decrease in the metrics across the season, likely due to playing higher quality opposition. 
+
+Next, let us analyse how the defense has performed over time:
+
+```{r}
+# Extract and melt defensive total pass statistics
+pass_stats_per_play_def <- melt(nd_stats[,c("pass_n_def", "pass_yards_per_play_def",
+                                        "pass_epa_per_play_def", 
+                                        "pass_wpa_per_play_def", "week")],
+                   id.vars = "week")
+```
+
+We can now visualize the development of our pass defense:
+
+```{r, warning = FALSE}
+# Create plot
+ggplot(pass_stats_per_play_def, # Set dataset
+       aes(x = week, y = value)) + # Set aesthetics
+  geom_point() + # Set geom_point for scatter plot
+  geom_smooth() + # Set geom_smooth for smoothing line
+  facet_wrap(~variable, scales = "free") + # Separate plot by variable
+  theme_minimal() + # Set theme
+  labs(title = "Notre Dame Pass Defense", # Set plot labels
+       subtitle = "2023 Season")
+```
+
+Here we see Notre Dame's pass defense improve in the later half of the season. 
+
+
+Next let us have a look at how the run defense has performed over the season:
+
+```{r}
+# Extract and melt defensive rushing statistics
+rush_stats_per_play_def <- melt(nd_stats[,c("rush_n_def", "rush_yards_per_play_def",
+                                        "rush_epa_per_play_def", 
+                                        "rush_wpa_per_play_def", "week")],
+                   id.vars = "week")
+```
+
+Now let us plot this out
+
+```{r, warning = FALSE}
+# Create plot
+ggplot(rush_stats_per_play_def, # Set dataset
+       aes(x = week, y = value)) + # Set aesthetics
+  geom_point() + # Set geom_point for scatter plot
+  geom_smooth() + # Set geom_smooth for smoothing line
+  facet_wrap(~variable, scales = "free") + # Separate plot by variables
+  theme_minimal() + # Set theme 
+  labs(title = "Notre Dame Rush Defense", # Set plot labels
+       subtitle = "2023 Season")
+```
+
+Here we see the rush defense has been more consistent in terms of EPA and WPA per run but did give up more yards per play in the midseason.
+
+## Analysis by Field Position
+
+We can also investigate how Notre Dame performs in different areas of the field.
+
+First we will calculate summary statistics for different areas on the field. We will look at:
+
+* Inside own 20 yard line 
+* Between 20 yard line and 50 yard line
+* Between 50 yard line and opponents 20 yard line
+* Inside opponents 20 yard line (red zone)
+
+```{r}
+# Calculate statistics for 1 - 20
+y1_stats <- create_team_summary(pbp = cfb_2023[cfb_2023$yards_to_goal >= 80,], 
+                                team_logos = team_logos)
+
+# Calculate statistics for 20 - 50
+y2_stats <- create_team_summary(pbp = cfb_2023[cfb_2023$yards_to_goal >= 50 &
+                                                 cfb_2023$yards_to_goal < 80,], 
+                                team_logos = team_logos)
+
+# Calculate statistics for 50 - 79
+y3_stats <- create_team_summary(pbp = cfb_2023[cfb_2023$yards_to_goal >= 21 &
+                                                 cfb_2023$yards_to_goal < 50,], 
+                                team_logos = team_logos)
+# Calculate statistics for 80 - 100
+y4_stats <- create_team_summary(pbp = cfb_2023[cfb_2023$yards_to_goal >= 0 &
+                                                 cfb_2023$yards_to_goal < 20,], 
+                                team_logos = team_logos)
+```
+
+Since we are currently interested in just the performance of Notre Dame here we will extract just the rows corresponding to Notre Dame:
+
+```{r}
+# Set team as Notre Dame
+team <- "Notre Dame"
+
+# Extract Notre Dame statistics
+nd_by_yards <- rbind.data.frame(y1_stats[y1_stats$school == team,],
+                             y2_stats[y2_stats$school == team,],
+                             y3_stats[y3_stats$school == team,],
+                             y4_stats[y4_stats$school == team,])
+```
+
+Let us now visualize Notre Dame's yards per play for passes and rushes in different areas of the field. To do this we can use the `create_zone_plot()` function:
+
+
+```{r}
+# Create plot for offensive yards
+nd_yards <- create_zone_plot(logos = team_logos, # Set team logos
+                 t1 = "Notre Dame", # Set  Team
+                 res_1 = nd_by_yards, # Set  Team Stats
+                 type = "Yards", # Set type as Yards
+                 off_def = "off") # Set type of plot to generate
+# Generate plot
+nd_yards
+```
+
+Here we see that Notre Dames pass offense has been most successful when playing out of their own redzone. This performance declines as we move up the pitch. 
+
+The pass game seems to outperform the run game for yards gained in all areas of the field.
+
+However, as we have seen previously, yards gained is not a perfect measure of success for different plays. Instead let's view this same plot for EPA per play from different areas of the field. 
+
+First let's look at the offensive statistics:
+
+```{r}
+# Create plot for offensive EPA
+nd_epa_off <- create_zone_plot(logos = team_logos, # Set team logos
+                 t1 = "Notre Dame", # Set  Team
+                 res_1 = nd_by_yards, # Set  Team Stats
+                 type = "EPA", # Set type as EPA
+                 off_def = "off") # Set type of plot to generate
+# Generate plot for offensive EPA
+nd_epa_off
+```
+
+Here, we see the run game was most successful at the ends of the field, either playing out of our own redzone or in the opponents redzone. Pass plays are very effective in the opponents red-zone but their are only a couple of plays there.  
+
+
+Next we will look at how the Notre Dame defense has performed with regards to EPA:
+
+```{r}
+# Create plot for defensive EPA
+nd_epa_def <- create_zone_plot(logos = team_logos, # Set team logos
+                 t1 = "Notre Dame", # Set  Team
+                 res_1 = nd_by_yards, # Set  Team Stats
+                 type = "EPA", # Set type as EPA
+                 off_def = "def") # Set type of plot to generate
+# Generate plot for defensive EPA
+nd_epa_def
+```
+
+Here, we see Notre Dame's pass defense had a negative EPA for all areas of the field except for the opponents redzone. While the rush defense has slight positive EPA in our own redzone and from the halfway to the opponents 20 yard line. 
+
+### Project Basic Analysis
+```{r}
+nd_off_run_2023 <- nd_off_m %>%
+  filter(playtype == "Rush") %>%
+  ggplot(aes(x=value)) +
+  geom_density(fill = 'blue', alpha = 0.2)
+
+nd_off_run_2023
+```
+
+Based on the graph, a little more than half of Notre Dame's rushing plays for the 2023 season are below zero. This means that Notre Dame in 2023 has either not been productive when running the ball, or their value does not really change. This may hurt them against a 2023 matchup against Michigan, as the Wolverines have been incredibly productive at defending against the run.
+
+```{r}
+mich_def_2023 <- cfb_2023[cfb_2023$def_pos_team == "Michigan" &
+                     cfb_2023$playtype %in% c("Rush", "Pass"),
+                       c("down", "playtype", "wpa", "EPA")]
+mich_def_m <- melt(mich_def_2023[,c("down", "playtype", "EPA")], id.vars = c("down", "playtype"))
+ggplot(mich_def_m, # Set dataset 
+       aes(x = value, y = factor(down), fill = factor(playtype)))+ # Set aesthetics
+  geom_density_ridges(alpha = 0.5) + # Set density to create distribution
+  theme_minimal() + # Set plot theme
+  labs(x = "EPA", title = "EPA by Play Type and Down", # Set plot labels
+       subtitle = "Michigan Defense 2023",
+       fill = "Play Type", y = "Down") +
+  scale_fill_manual(values = c("Pass" = "red", "Rush" = "Blue")) + # Set colors manually
+  dark_theme_bw() + # Set theme
+  geom_vline(xintercept = 0, linetype = 2, color = "white") # Add vertical line at 0
+
+# Turn off dark mode
+invert_geom_defaults()
+```
+
+Due to this measurement being defense, a negative EPA means it is better. According to the above plot, Michigan on 1st, 2nd, and 3rd downs has the peak of the negative side, meaning that they do a great job of containing the run on those downs. Against teams that struggle to move the ball on the ground, this could serve them very well in those hypothetical matchups.
+
+```{r}
+# Load data
+cfb_2015 <- load_cfb_pbp(seasons = 2015)
+# Convert to data frame
+cfb_2015 <- as.data.frame(cfb_2015)
+
+```
+
+```{r}
+nd_off_2015 <- cfb_2015[which(cfb_2015$pos_team == "Notre Dame" &
+                     cfb_2015$play_type %in% c("Rush", "Pass Reception")),
+                       c("down", "play_type", "wpa", "EPA")]
+
+nd_off_m_2015 <- melt(nd_off_2015[,c("down", "play_type", "EPA")], id.vars = c("down", "play_type"))
+ggplot(nd_off_m_2015, # Set dataset
+       aes(x = value, y = factor(down), fill = factor(play_type)))+ # Set aesthetics
+  geom_density_ridges(alpha = 0.5) + # Set geom density ridges
+  theme_minimal() + # Set theme as minimal
+  labs(x = "EPA", title = "EPA by Play Type and Down", # Set labels for plot
+       subtitle = "Notre Dame Offense in 2015",
+       fill = "Play Type", y = "Down") +
+  scale_fill_manual(values = c("Pass Reception" = "red", "Rush" = "Blue")) + # Set colors manually
+  dark_theme_bw()+ # Convert to dark theme
+  geom_vline(xintercept = 0, linetype = 2, color = "white") # Add vertical line at 0
+
+# Turn off dark mode
+invert_geom_defaults()
+```
+
+Based on the above visualization, we see that Notre Dame's offense in 2015 was fairly more productive, particularly in the passing attack. On third down in particular, the Irish passing attack was very strong, with the peak of the EPA being well over 0. This means that Notre Dame had a very explosive offense that season and was very efficient moving the ball.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
